@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -16,7 +18,7 @@ class PostController extends Controller
     public function index()
     {
         return Inertia::render('Posts/Index', [
-            'posts' => Post::orderBy('update_at', 'desc')->get(),
+            'posts' => Post::orderBy('updated_at', 'desc')->get(),
         ]);
     }
 
@@ -25,7 +27,7 @@ class PostController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Posts/create');
+        return Inertia::render('Posts/Create');
     }
 
     /**
@@ -35,13 +37,15 @@ class PostController extends Controller
     {
         $post = $request->validated();
 
-        if($request->hasFile('imagem_destaque')){
-            $filePath = Storage::disck('public')->put('images/posts/feature-images', request()->file('imagem_destaque'));
+        if ($request->hasFile('imagem_destaque')) {
+            $filePath = Storage::disk('public')
+                ->put('images/posts/featured-images', request()->file('imagem_destaque'));
             $post['imagem_destaque'] = $filePath;
         }
+
         $create = Post::create($post);
-        if ($create){
-            return redirect ()->route('post.index');
+        if ($create) {
+            return redirect()->route('post.index');
         }
         return abort(500);
     }
@@ -51,7 +55,9 @@ class PostController extends Controller
      */
     public function show(string $id)
     {
-        return Inertia::render('Posts/Show', [ 'post' => Post::findOrFail($id),]);
+        return Inertia::render('Posts/Show', [
+            'post' => Post::findOrFail($id),
+        ]);
     }
 
     /**
@@ -59,14 +65,14 @@ class PostController extends Controller
      */
     public function edit(string $id)
     {
+        //
         return Inertia::render(
             'Posts/Edit',
             [
                 'post' => Post::findOrFail($id),
             ]
-            );
+        );
     }
-
     /**
      * Update the specified resource in storage.
      */
@@ -76,21 +82,30 @@ class PostController extends Controller
         $validated = $request->validated();
 
         if ($request->hasFile('imagem_destaque')) {
-            //delte a imagem
+            // delete image
             Storage::disk('public')->delete($post->imagem_destaque);
 
             $filePath = Storage::disk('public')->put('images/posts/featured-images', 
             request()->file('imagem_destaque'), 'public');
-            $validated['image,_destaque'] = $filePath;
+            $validated['imagem_destaque'] = $filePath;
         }
+
+        $update = $post->update($validated);
+
+        if ($update) {
+            return redirect()->route('posts.index');
+        }
+
+        return abort(500);
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
-        $post = Post::FinOrFail($id);
+        $post = Post::findOrFail($id);
 
         Storage::disk('public')->delete($post->featured_image);
 
@@ -99,6 +114,7 @@ class PostController extends Controller
         if ($delete) {
             return redirect()->route('posts.index');
         }
+
         return abort(500);
     }
 }
