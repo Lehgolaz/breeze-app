@@ -18,7 +18,8 @@ class PostController extends Controller
     public function index()
     {
         return Inertia::render('Posts/Index', [
-            'posts' => Post::orderBy('updated_at', 'desc')->get(),
+            'posts' =>
+            Post::with('user:id,name')->latest()->get(),
         ]);
     }
 
@@ -43,9 +44,10 @@ class PostController extends Controller
             $post['imagem_destaque'] = $filePath;
         }
 
-        $create = Post::create($post);
+        $create = $request->user()->posts()->create($post);
+
         if ($create) {
-            return redirect()->route('post.index');
+            return redirect()->route('posts.index');
         }
         return abort(500);
     }
